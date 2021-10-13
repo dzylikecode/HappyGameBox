@@ -6,6 +6,6 @@ CONSOLE& consoleOut = CONSOLE::getConsole();
 int main(int argc, char* argv[])
 {
 	WriteInConsole(INFO, TEXT("hello, world"));
-	consoleOut.clear();
+	//consoleOut.clear();
 	return 0;
 }
