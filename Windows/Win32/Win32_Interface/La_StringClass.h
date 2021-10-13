@@ -77,19 +77,13 @@ inline ASTRING& AToA(__in LPCCH pszInBuf) { static ASTRING temp; return temp = p
 
 
 #ifdef UNICODE
-using tstring = std::wstring;
-using tstringstream = std::wstringstream;
+
 
 #define AToT    AToW
 #define TToA	WToA
 #define WToT	WToW
 #define TToW	WToW
-
-
 #else
-using tstring = std::string;
-using tstringstream = std::stringstream;
-
 #define AToT    AToA
 #define TToA	AToA
 #define WToT	WToA
