@@ -8,7 +8,11 @@
     <ExecutablePath>$(ExecutablePath)</ExecutablePath>
     <IncludePath>$(LA_WIN32_INC);$(IncludePath)</IncludePath>
   </PropertyGroup>
-  <ItemDefinitionGroup />
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <BuildMacro Include="LA_WIN32_INC">
       <Value>$(LA_WIN32_INC)</Value>

@@ -91,15 +91,16 @@ inline ASTRING& AToA(__in LPCCH pszInBuf) { static ASTRING temp; return temp = p
 #endif
 
 
-template< typename... Args >
-std::string string_sprintf(const char* format, Args... args) {
-	int length = std::snprintf(nullptr, 0, format, args...);
+template< typename Tch, typename... Args >
+std::tstring tstring_sprintf(const Tch* format, Args... args) 
+{
+	int length = _sntprintf(nullptr, 0, format, args...);
 	assert(length >= 0);
 
-	char* buf = new char[length + 1];
-	std::snprintf(buf, length + 1, format, args...);
+	Tch* buf = new Tch[length + 1];
+	_sntprintf(buf, length + 1, format, args...);
 
-	std::string str(buf);
+	std::tstring str(buf);
 	delete[] buf;
 	return std::move(str);
 }
