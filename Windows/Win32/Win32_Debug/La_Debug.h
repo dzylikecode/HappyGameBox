@@ -26,6 +26,7 @@
 
 #include <Console/La_WinConosle.h>
 
+
 #define DEBUG_CONSOLE	WriteInConsole
 
 
@@ -40,6 +41,26 @@
 #endif
 
 
+#include <assert.h>
+template< typename... Args >
+std::string string_sprintf(const char* format, Args... args) 
+{
+	int length = std::snprintf(nullptr, 0, format, args...);
+	assert(length >= 0);
 
+	char* buf = new char[length + 1];
+	std::snprintf(buf, length + 1, format, args...);
+
+	std::string str(buf);
+	delete[] buf;
+	return std::move(str);
+}
+
+template< typename... Args >
+int MessageBoxPrintf(const TCHAR* szCaption, UINT uType, const TCHAR* szFormat, Args... args)
+{
+	std::tstring szBuffer;
+	return MessageBox(NULL, szBuffer, szCaption, uType);
+}
 
 #endif
