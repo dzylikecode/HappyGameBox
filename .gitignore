@@ -4,7 +4,8 @@
 
 /Windows/Win32/.vs/Win32/v16
 /Windows/Win32/Console/Debug
-/Windows/Win32/Debug
-/Windows/Win32/Win32_Debug/Debug/Win32_Debug.tlog
+/Windows/Win32/Debug/*.exe 
+/Windows/Win32/Debug/*.pdb
+/Windows/Win32/Debug/*.idb
 /Windows/Win32/*/Debug
 
