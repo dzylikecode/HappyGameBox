@@ -3,10 +3,12 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros">
     <LA_WIN32_INC>$(SolutionDir)</LA_WIN32_INC>
+    <LA_WIN32_LIB>$(SolutionDir)Debug</LA_WIN32_LIB>
   </PropertyGroup>
   <PropertyGroup>
     <ExecutablePath>$(ExecutablePath)</ExecutablePath>
     <IncludePath>$(LA_WIN32_INC);$(IncludePath)</IncludePath>
+    <LibraryPath>$(LA_WIN32_LIB);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
@@ -16,6 +18,9 @@
   <ItemGroup>
     <BuildMacro Include="LA_WIN32_INC">
       <Value>$(LA_WIN32_INC)</Value>
+    </BuildMacro>
+    <BuildMacro Include="LA_WIN32_LIB">
+      <Value>$(LA_WIN32_LIB)</Value>
     </BuildMacro>
   </ItemGroup>
 </Project>

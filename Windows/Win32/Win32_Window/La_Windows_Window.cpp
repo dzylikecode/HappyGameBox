@@ -12,13 +12,24 @@ namespace
 	bool      bUntilCreated = false;
 	bool	  bExited = false;
 
+	LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+	{
+		switch (uMsg)
+		{
+		case WM_DESTROY:
+			PostQuitMessage(0);
+			return 0;
+		}
+
+		return DefWindowProc(hwnd, uMsg, wParam, lParam);
+	}
 
 	bool inlaCreateWindow(UINT width, UINT height, const TCHAR* title, WNDPROC wndProc)
 	{
 		WNDCLASSEX wndclassEx;
 		wndclassEx.cbSize = sizeof(WNDCLASSEX);
 		wndclassEx.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
-		wndclassEx.lpfnWndProc = wndProc ? wndProc : DefWindowProc;
+		wndclassEx.lpfnWndProc = wndProc ? wndProc : WindowProc;
 		wndclassEx.cbClsExtra = 0;
 		wndclassEx.cbWndExtra = 0;
 		wndclassEx.hInstance = global_hInst = GetModuleHandle(nullptr);
@@ -87,19 +98,10 @@ namespace
 
 		MSG msg;
 
-		while (TRUE)
+		while (GetMessage(&msg, NULL, 0, 0))
 		{
-			if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
-			{
-				if (msg.message == WM_QUIT)
-				{
-					break;
-				}
-
-				TranslateMessage(&msg);
-
-				DispatchMessage(&msg);
-			}
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
 		}
 		mtx.lock();
 		bExited = true;
