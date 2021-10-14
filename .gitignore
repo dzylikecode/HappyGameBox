@@ -5,7 +5,6 @@
 /Windows/Win32/.vs/Win32/v16
 /Windows/Win32/Console/Debug
 /Windows/Win32/Debug
-/Windows/Win32/Win32_Interface/Debug
 /Windows/Win32/Win32_Debug/Debug/Win32_Debug.tlog
-/Windows/Win32/Win32_Debug/Debug
-/Windows/Win32/Win32_Window/Debug
+/Windows/Win32/*/Debug
+
