@@ -2,16 +2,16 @@
 # 此 .gitignore 文件已由 Microsoft(R) Visual Studio 自动创建。
 ################################################################################
 
-/Windows/Win32/.vs/Win32/v16
-/Windows/Win32/Console/Debug
-/Windows/Win32/Debug/*.exe 
-/Windows/Win32/Debug/*.pdb
-/Windows/Win32/Debug/*.idb
-/Windows/Win32/*/Debug
+/Core/Windows/Win32/.vs/Win32/v16
+/Core/Windows/Win32/Console/Debug
+/Core/Windows/Win32/Debug/*.exe 
+/Core/Windows/Win32/Debug/*.pdb
+/Core/Windows/Win32/Debug/*.idb
+/Core/Windows/Win32/*/Debug
 
-/Example/ExampleWin/.vs
-/Example/ExampleWin/Debug
-/Example/ExampleWin/*/Debug
-/SDL_Test/SDL_Test/.vs/SDL_Test/v16
-/SDL_Test/SDL_Test/*/x64/Debug
-/SDL_Test/SDL_Test/x64/Debug
+/Core/Example/ExampleWin/.vs
+/Core/Example/ExampleWin/Debug
+/Core/Example/ExampleWin/*/Debug
+/Core/SDL_Test/SDL_Test/.vs/SDL_Test/v16
+/Core/SDL_Test/SDL_Test/*/x64/Debug
+/Core/SDL_Test/SDL_Test/x64/Debug
