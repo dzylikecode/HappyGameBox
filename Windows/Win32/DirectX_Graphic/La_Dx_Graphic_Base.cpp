@@ -2,29 +2,127 @@
 #include <ddraw.h>
 #include <Win32_Debug/La_Debug.h>
 #pragma comment(lib, "ddraw.lib")
+#include <list>
+
+#define INIT_STRUCT(st)		{memset(&st, 0, sizeof(st)); st.dwSize = sizeof(st);}
 
 namespace
 {
+	using namespace la;
+
 	bool bInit = false;
 	HWND global_hwnd;
 	UINT global_width, global_height;
 	bool global_bWindowed = true;
-	LPDIRECTDRAW7		 lpdd7 = nullptr;
-	LPDIRECTDRAWSURFACE7 lpddsprimary = nullptr;
-	LPDIRECTDRAWSURFACE7 lpddsback = nullptr;
-	LPDIRECTDRAWCLIPPER  lpddclipper = nullptr;
-	LPDIRECTDRAWCLIPPER  lpddclipperwin = nullptr;
+	LPDIRECTDRAW7	lpdd7 = nullptr;
+	SURFACE_PTR		lpddsprimary = nullptr;
+	SURFACE_PTR		lpddsback = nullptr;
+	CLIP_PTR		lpddclipper = nullptr;
+	CLIP_PTR		lpddclipperwin = nullptr;
 	RECT rtClip = { 0 };
 	const DWORD SCREEN_COLOR_KEY = 0;
-	const DWORD SCREEN_BACK_MEMORY = 0;
+	std::list<SURFACE_PTR> surfaceList;
 
+	CLIP_PTR SurfaceAttachClipper(SURFACE_PTR lpddsurface, int num_rects, LPRECT clip_list)
+	{
+		LPDIRECTDRAWCLIPPER lpddclipper;
+		//表面申请裁剪器
+		//第一个必须置为0
+		if (FAILED(lpdd7->CreateClipper(0, &lpddclipper, nullptr)))
+		{
+			DEBUG_INFO(ERR, TEXT("Create Clipper Failed!"));
+			return nullptr;
+		}
+
+		//准备关联到裁剪器上，需要用到连续的内存，一部分是信息头，一部分是裁剪数据
+		LPRGNDATA region_data;
+
+		region_data = (LPRGNDATA)malloc(sizeof(RGNDATAHEADER) + num_rects * sizeof(RECT));
+
+		//把裁剪数据复制到数据载体上
+		memcpy(region_data->Buffer, clip_list, num_rects * sizeof(RECT));
+
+		//set up fields of header
+		region_data->rdh.dwSize = sizeof(RGNDATAHEADER);
+		region_data->rdh.iType = RDH_RECTANGLES;
+		region_data->rdh.nCount = num_rects;
+		region_data->rdh.nRgnSize = num_rects * sizeof(RECT);
+
+		//找到裁剪列表的并集，放入头文件中
+		//内部预设是这么大
+		region_data->rdh.rcBound.left = 64000;
+		region_data->rdh.rcBound.top = 64000;
+		region_data->rdh.rcBound.right = -64000;
+		region_data->rdh.rcBound.bottom = -64000;
+		//开始查找并集
+		for (int i = 0; i < num_rects; i++)
+		{
+			region_data->rdh.rcBound.left = min(region_data->rdh.rcBound.left, clip_list[i].left);
+			region_data->rdh.rcBound.right = max(region_data->rdh.rcBound.right, clip_list[i].right);
+			region_data->rdh.rcBound.top = min(region_data->rdh.rcBound.top, clip_list[i].top);
+			region_data->rdh.rcBound.bottom = max(region_data->rdh.rcBound.bottom, clip_list[i].bottom);
+		}
+
+		//将数据发送
+		if (FAILED(lpddclipper->SetClipList(region_data, 0)))
+		{
+			DEBUG_INFO(ERR, TEXT("Set Clipper List Failed!"));
+			free(region_data);
+			return nullptr;
+		}
+
+		// now attach the clipper to the surface
+		if (FAILED(lpddsurface->SetClipper(lpddclipper)))
+		{
+			// release memory and return error
+			DEBUG_INFO(ERR, TEXT("Attach the Clipper to the Surface Failed!"));
+			free(region_data);
+			return(NULL);
+		}
+
+		//释放载体
+		free(region_data);
+		//将接口返回给调用者
+		return lpddclipper;
+	}
+
+	SURFACE_PTR CreateBackSurface(int width, int height, DWORD colorKey, DWORD surfaceMemoryStyle)
+	{
+		DDSURFACEDESC2 ddsd;
+		INIT_STRUCT(ddsd);
+		ddsd.dwFlags = DDSD_CAPS | DDSD_WIDTH | DDSD_HEIGHT;
+
+		ddsd.dwHeight = height;
+		ddsd.dwWidth = width;
+
+		ddsd.ddsCaps.dwCaps = DDSCAPS_OFFSCREENPLAIN | surfaceMemoryStyle;
+
+		SURFACE_PTR lpddsurface;
+		if (FAILED(lpdd7->CreateSurface(&ddsd, &lpddsurface, nullptr)))
+		{
+			DEBUG_INFO(ERR, TEXT("Create Surface Failed"));
+			return nullptr;
+		}
+
+		DDCOLORKEY color_key;
+		color_key.dwColorSpaceLowValue = colorKey;
+		color_key.dwColorSpaceHighValue = colorKey;
+
+		//如果设置色彩空间，则要标志 SPACE
+		//还可以用 alpha 叠加操作，色彩叠加
+		//目标色彩键，相当于栅栏
+		if (FAILED(lpddsurface->SetColorKey(DDCKEY_SRCBLT, &color_key)))
+		{
+			DEBUG_INFO(ERR, TEXT("Surface Sets the Color Key Failed"));
+		}
+		return lpddsurface;
+	}
 }
-#define INIT_STRUCT(st)		{memset(&st, 0, sizeof(st)); st.dwSize = sizeof(st);}
 
 
 namespace la
 {
-	bool InitDXGraphic(HWND hwnd, UINT width, UINT height, bool bWindowed)
+	bool InitDXGraphic(HWND hwnd, UINT width, UINT height, UINT bpp, bool bWindowed)
 	{
 		if (bInit) return true;
 
@@ -53,7 +151,12 @@ namespace la
 			//DDSCL_ALLOWREBOOT 检测ctrl + alt + delete
 			//多线程
 			//EXCLUSIVE FULLSCREEN 连用，表示不能用GDI改写屏幕
-			if (FAILED(lpdd7->SetCooperativeLevel(hwnd, DDSCL_ALLOWMODEX | DDSCL_FULLSCREEN | DDSCL_EXCLUSIVE | DDSCL_ALLOWREBOOT | DDSCL_MULTITHREADED)))
+			if (FAILED(lpdd7->SetCooperativeLevel(hwnd, 
+				DDSCL_ALLOWMODEX | 
+				DDSCL_FULLSCREEN | 
+				DDSCL_EXCLUSIVE | 
+				DDSCL_ALLOWREBOOT | 
+				DDSCL_MULTITHREADED)))
 			{
 				DEBUG_INFO(ERR, TEXT("COM Direct Draw Sets Cooperative Level Failed"));
 				return false;
@@ -89,7 +192,7 @@ namespace la
 
 			//windows mode 没有后备表面缓冲，可以自己设计生成
 			//没有打开，这个有效符，也没什么赋值的，前面已经清零了
-			//ddsd.dwBackBufferCount = 0;
+			ddsd.dwBackBufferCount = 0;
 		}
 
 		if (FAILED(lpdd7->CreateSurface(&ddsd, &lpddsprimary, nullptr)))
@@ -107,6 +210,39 @@ namespace la
 		lpddsprimary->GetPixelFormat(&ddpf);
 
 		int dd_pixel_format = ddpf.dwRGBBitCount;
+#if 0
+		// based on masks determine if system is 5.6.5 or 5.5.5
+		//RGB Masks for 5.6.5 mode
+		//DDPF_RGB  16 R: 0x0000F800  
+		//             G: 0x000007E0  
+		//             B: 0x0000001F  
+
+		//RGB Masks for 5.5.5 mode
+		//DDPF_RGB  16 R: 0x00007C00  
+		//             G: 0x000003E0  
+		//             B: 0x0000001F  
+		// test for 6 bit green mask)
+		//if (ddpf.dwGBitMask == 0x000007E0)
+		//   dd_pixel_format = DD_PIXEL_FORMAT565;
+
+		// use number of bits, better method
+		dd_pixel_format = ddpf.dwRGBBitCount;
+
+		Write_Error("\npixel format = %d", dd_pixel_format);
+
+		// set up conversion macros, so you don't have to test which one to use
+		if (dd_pixel_format == DD_PIXEL_FORMAT555)
+		{
+			RGB16Bit = RGB16Bit555;
+			Write_Error("\npixel format = 5.5.5");
+		} // end if
+		else
+		{
+			RGB16Bit = RGB16Bit565;
+			Write_Error("\npixel format = 5.6.5");
+		} // end else
+#endif
+
 		//记录并查看
 		DEBUG_INFO(INFO, TEXT("\npixel format = %d"), dd_pixel_format);
 		if (dd_pixel_format != sizeof(COLOR) * 8)
@@ -135,7 +271,7 @@ namespace la
 			//full screen 下可以用flip技术
 			//window mode 下创建双缓冲就用blit
 			//利用的不是后备表面，而是离屏表面，没有和前表面建立联系
-			lpddsback = CreateSurface(width, height, SCREEN_COLOR_KEY, SCREEN_BACK_MEMORY);
+			lpddsback = CreateBackSurface(width, height, SCREEN_COLOR_KEY, DDSCAPS_SYSTEMMEMORY);
 		}
 
 
@@ -203,6 +339,9 @@ namespace la
 	{
 		if (bInit)
 		{
+			for (auto p = surfaceList.cbegin(); p != surfaceList.cend(); p++)
+				(*p)->Release();
+
 			//释放所有的COM组件
 			if (lpddclipper)
 			{
@@ -237,7 +376,7 @@ namespace la
 			bInit = false;
 		}
 	}
-	void FillSurfaceColor(LPDIRECTDRAWSURFACE7 lpddsurface, DWORD color, RECT* client)
+	void FillSurfaceColor(SURFACE_PTR lpddsurface, DWORD color, RECT* client)
 	{
 		DDBLTFX ddbltfx;//用来控制blt的操作信息
 
@@ -250,7 +389,7 @@ namespace la
 		lpddsurface->Blt(client, nullptr, nullptr, DDBLT_COLORFILL | DDBLT_WAIT, &ddbltfx);
 	}
 	//自己创建离屏表面来当作是后备缓冲
-	LPDIRECTDRAWSURFACE7 CreateSurface(int width, int height, DWORD colorKey, DWORD surfaceMemoryStyle)
+	SURFACE_PTR CreateSurface(int width, int height, DWORD colorKey, DWORD surfaceMemoryStyle)
 	{
 		DDSURFACEDESC2 ddsd;
 		INIT_STRUCT(ddsd);
@@ -261,7 +400,7 @@ namespace la
 
 		ddsd.ddsCaps.dwCaps = DDSCAPS_OFFSCREENPLAIN | surfaceMemoryStyle;
 
-		LPDIRECTDRAWSURFACE7 lpddsurface;
+		SURFACE_PTR lpddsurface;
 		if (FAILED(lpdd7->CreateSurface(&ddsd, &lpddsurface, nullptr)))
 		{
 			DEBUG_INFO(ERR, TEXT("Create Surface Failed"));
@@ -279,81 +418,21 @@ namespace la
 		{
 			DEBUG_INFO(ERR, TEXT("Surface Sets the Color Key Failed"));
 		}
-
+		surfaceList.push_back(lpddsurface);
 		return lpddsurface;
 	}
-	LPDIRECTDRAWCLIPPER SurfaceAttachClipper(LPDIRECTDRAWSURFACE7 lpddsurface, int num_rects, LPRECT clip_list)
+	bool ReleaseSurface(SURFACE_PTR sur)
 	{
-		LPDIRECTDRAWCLIPPER lpddclipper;
-		//表面申请裁剪器
-		//第一个必须置为0
-		if (FAILED(lpdd7->CreateClipper(0, &lpddclipper, nullptr)))
+		for (auto p = surfaceList.cbegin(); p != surfaceList.cend(); p++)
 		{
-			DEBUG_INFO(ERR, TEXT("Create Clipper Failed!"));
-			return nullptr;
+			if (sur == *p)
+			{
+				(*p)->Release();
+				p = surfaceList.erase(p);
+				return true;
+			}
 		}
-
-		//准备关联到裁剪器上，需要用到连续的内存，一部分是信息头，一部分是裁剪数据
-		LPRGNDATA region_data;
-
-		region_data = (LPRGNDATA)malloc(sizeof(RGNDATAHEADER) + num_rects * sizeof(RECT));
-
-		//把裁剪数据复制到数据载体上
-		memcpy(region_data->Buffer, clip_list, num_rects * sizeof(RECT));
-
-		//set up fields of header
-		region_data->rdh.dwSize = sizeof(RGNDATAHEADER);
-		region_data->rdh.iType = RDH_RECTANGLES;
-		region_data->rdh.nCount = num_rects;
-		region_data->rdh.nRgnSize = num_rects * sizeof(RECT);
-
-		//找到裁剪列表的并集，放入头文件中
-		//内部预设是这么大
-		region_data->rdh.rcBound.left = 64000;
-		region_data->rdh.rcBound.top = 64000;
-		region_data->rdh.rcBound.right = -64000;
-		region_data->rdh.rcBound.bottom = -64000;
-		//开始查找并集
-		for (int i = 0; i < num_rects; i++)
-		{
-			region_data->rdh.rcBound.left = min(region_data->rdh.rcBound.left, clip_list[i].left);
-			region_data->rdh.rcBound.right = max(region_data->rdh.rcBound.right, clip_list[i].right);
-			region_data->rdh.rcBound.top = min(region_data->rdh.rcBound.top, clip_list[i].top);
-			region_data->rdh.rcBound.bottom = max(region_data->rdh.rcBound.bottom, clip_list[i].bottom);
-		}
-
-		//将数据发送
-		if (FAILED(lpddclipper->SetClipList(region_data, 0)))
-		{
-			DEBUG_INFO(ERR, TEXT("Set Clipper List Failed!"));
-			free(region_data);
-			return nullptr;
-		}
-
-		// now attach the clipper to the surface
-		if (FAILED(lpddsurface->SetClipper(lpddclipper)))
-		{
-			// release memory and return error
-			DEBUG_INFO(ERR, TEXT("Attach the Clipper to the Surface Failed!"));
-			free(region_data);
-			return(NULL);
-		}
-
-		//释放载体
-		free(region_data);
-		//将接口返回给调用者
-		return lpddclipper;
-	}
-	void ResetClipper(int left, int top, int right, int bottom)
-	{
-		if (lpddclipper)
-		{
-			lpddclipper->Release();
-			lpddclipper = nullptr;
-		}
-
-		RECT screen_rect = { left, top, right, bottom };
-		lpddclipper = SurfaceAttachClipper(lpddsback, 1, &screen_rect);
+		return false;
 	}
 	void Flush()
 	{
@@ -420,6 +499,22 @@ namespace la
 #else
 		lpdd7->WaitForVerticalBlank(DDWAITVB_BLOCKBEGIN, 0);
 #endif
+	}
+	SURFACE_PTR& GetPrimarySurface() { return lpddsprimary; }
+	SURFACE_PTR& GetBackSurface() { return lpddsback; }
+	bool LockSurface(const SURFACE_PTR sur, PBYTE& memory, LONG& lpitch)
+	{
+		DDSURFACEDESC2 ddsd;
+		INIT_STRUCT(ddsd);
+		HRESULT hre = sur->Lock(nullptr, &ddsd, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, nullptr);
+		memory = (PBYTE)ddsd.lpSurface;
+		lpitch = ddsd.lPitch;
+		return true;
+	}
+	bool UnlockSurface(const SURFACE_PTR sur)
+	{
+		HRESULT hre = sur->Unlock(nullptr);
+		return true;
 	}
 }
 

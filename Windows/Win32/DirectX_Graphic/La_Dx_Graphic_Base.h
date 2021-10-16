@@ -23,6 +23,8 @@
 #include <windows.h>
 #include <ddraw.h>
 
+
+
 #define PALETTE_NUM			 256
 typedef  UINT  COLOR;
 typedef  COLOR laPALETTE[PALETTE_NUM];
@@ -31,9 +33,10 @@ typedef  COLOR laPALETTE[PALETTE_NUM];
 //0 是 默认VRAM内存中
 //DDCAPS_SYSTEMMEMORY 是系统内存
 //也可以创建在显存当中
-#define SURFACE_DEFAULT_M	0
-#define SURFACE_LOCALVIDEO	DDSCAPS_VIDEOMEMORY | DDSCAPS_LOCALVIDMEM
-#define SURFACE_NONLOCALVM	DDSCAPS_VIDEOMEMORY | DDSCAPS_NONLOCALVIDMEM	
+#define SURFACE_DEFAULT_M		0
+#define SURFACE_SYSTEMMEMORY	DDSCAPS_SYSTEMMEMORY
+#define SURFACE_LOCALVIDEO		DDSCAPS_VIDEOMEMORY | DDSCAPS_LOCALVIDMEM
+#define SURFACE_NONLOCALVM		DDSCAPS_VIDEOMEMORY | DDSCAPS_NONLOCALVIDMEM	
 
 #define RGB_DX(r,g,b)          ((COLOR)(((BYTE)(b)|((WORD)((BYTE)(g))<<8))|(((COLOR)(BYTE)(r))<<16)))
 #define GetBValue_DX(rgb)      (LOBYTE(rgb))
@@ -46,11 +49,19 @@ inline void DisRGB(const int rgb, int& r, int& g, int& b) { r = GetRValue_DX(rgb
 
 namespace la
 {
-	bool InitDXGraphic(HWND hwnd, UINT width, UINT height, bool bWindowed = true);
-	LPDIRECTDRAWCLIPPER SurfaceAttachClipper(LPDIRECTDRAWSURFACE7 lpddsurface, int num_rects, LPRECT clip_list);
-	LPDIRECTDRAWSURFACE7 CreateSurface(int width, int height, DWORD colorKey, DWORD surfaceMemoryStyle);
-	void FillSurfaceColor(LPDIRECTDRAWSURFACE7 lpddsurface, DWORD color, RECT* client);
-	void ResetClipper(int left, int top, int right, int bottom);
+	typedef LPDIRECTDRAWSURFACE7	SURFACE_PTR;
+	typedef LPDIRECTDRAWCLIPPER		CLIP_PTR;
+
+	bool InitDXGraphic(HWND hwnd, UINT width, UINT height, UINT bpp = 32, bool bWindowed = true);
+	SURFACE_PTR CreateSurface(int width, int height, DWORD colorKey, DWORD surfaceMemoryStyle);
+	void FillSurfaceColor(SURFACE_PTR lpddsurface, DWORD color, RECT* client);
+	void CloseDXGraphic();
+	void Flush();
+	void WaitForVsync(void);
+	SURFACE_PTR& GetPrimarySurface();
+	SURFACE_PTR& GetBackSurface();
+	bool LockSurface(const SURFACE_PTR sur, PBYTE& memory, LONG& lpitch);
+	bool UnlockSurface(const SURFACE_PTR sur);
 	inline void MemSetColor(void* dest, COLOR data, int count)
 	{
 		//汇编形式
@@ -77,9 +88,6 @@ namespace la
 			rep stosw; //move data
 		}
 	}
-	void CloseDXGraphic();
-	void Flush();
-	void WaitForVsync(void);
 }
 
 

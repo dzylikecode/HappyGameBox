@@ -9,3 +9,6 @@
 /Windows/Win32/Debug/*.idb
 /Windows/Win32/*/Debug
 
+/Example/ExampleWin/.vs/ExampleWin/v16
+/Example/ExampleWin/Debug
+/Example/ExampleWin/Win32Star/Debug
