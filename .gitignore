@@ -12,3 +12,6 @@
 /Example/ExampleWin/.vs
 /Example/ExampleWin/Debug
 /Example/ExampleWin/*/Debug
+/SDL_Test/SDL_Test/.vs/SDL_Test/v16
+/SDL_Test/SDL_Test/*/x64/Debug
+/SDL_Test/SDL_Test/x64/Debug
