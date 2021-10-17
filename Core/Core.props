@@ -3,23 +3,26 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros">
     <SDL_LIB_64>F:\user\La_Library\SDL2-2.0.16\lib\x64</SDL_LIB_64>
-    <SDL_inc>F:\user\La_Library\SDL2-2.0.16\include</SDL_inc>
+    <SDL_INC>F:\user\La_Library\SDL2-2.0.16\include</SDL_INC>
   </PropertyGroup>
   <PropertyGroup>
-    <IncludePath>$(SDL_inc);$(IncludePath)</IncludePath>
+    <IncludePath>$(SDL_INC);$(IncludePath)</IncludePath>
     <LibraryPath>$(SDL_LIB_64);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <Link>
       <AdditionalDependencies>SDL2.lib;SDL2main.lib;SDL2test.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <ClCompile>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <BuildMacro Include="SDL_LIB_64">
       <Value>$(SDL_LIB_64)</Value>
     </BuildMacro>
-    <BuildMacro Include="SDL_inc">
-      <Value>$(SDL_inc)</Value>
+    <BuildMacro Include="SDL_INC">
+      <Value>$(SDL_INC)</Value>
     </BuildMacro>
   </ItemGroup>
 </Project>
