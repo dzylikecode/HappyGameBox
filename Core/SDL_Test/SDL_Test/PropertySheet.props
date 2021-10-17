@@ -4,14 +4,16 @@
   <PropertyGroup Label="UserMacros">
     <SDL_inc>F:\user\La_Library\SDL2-2.0.16\include</SDL_inc>
     <SDL_LIB_64>F:\user\La_Library\SDL2-2.0.16\lib\x64</SDL_LIB_64>
+    <SDL_IMAGE_INC>F:\user\La_Library\SDL2_image-devel-2.0.5-VC\SDL2_image-2.0.5\include</SDL_IMAGE_INC>
+    <SDL_IMAGE_LIB>F:\user\La_Library\SDL2_image-devel-2.0.5-VC\SDL2_image-2.0.5\lib\x64</SDL_IMAGE_LIB>
   </PropertyGroup>
   <PropertyGroup>
-    <IncludePath>$(SDL_inc);$(IncludePath)</IncludePath>
-    <LibraryPath>$(SDL_LIB_64);$(LibraryPath)</LibraryPath>
+    <IncludePath>$(SDL_inc);$(SDL_IMAGE_INC);$(IncludePath)</IncludePath>
+    <LibraryPath>$(SDL_LIB_64);$(SDL_IMAGE_LIB);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <Link>
-      <AdditionalDependencies>SDL2.lib;SDL2main.lib;SDL2test.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>SDL2_image.lib;SDL2.lib;SDL2main.lib;SDL2test.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -20,6 +22,12 @@
     </BuildMacro>
     <BuildMacro Include="SDL_LIB_64">
       <Value>$(SDL_LIB_64)</Value>
+    </BuildMacro>
+    <BuildMacro Include="SDL_IMAGE_INC">
+      <Value>$(SDL_IMAGE_INC)</Value>
+    </BuildMacro>
+    <BuildMacro Include="SDL_IMAGE_LIB">
+      <Value>$(SDL_IMAGE_LIB)</Value>
     </BuildMacro>
   </ItemGroup>
 </Project>
